@@ -1,0 +1,39 @@
+# Ambiente e segredos
+.env
+*.env.*
+secrets.*
+
+# Ambientes virtuais e caches Python
+venv/
+.venv/
+env/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.coverage
+
+# Dados reais da carteira (nunca subir!)
+historico.json
+posicoes.json
+
+# Gráficos e arquivos gerados
+*.png
+*.jpg
+*.jpeg
+*.pdf
+
+# Pastas do Cursor/Claude/IDE
+.claude/
+.vscode/
+.idea/
+Ideias/
+cursor/
+*.local.json
+PROJECT_KNOWLEDGE.md
+CLAUDE.md
+
+# Outros comuns
+.DS_Store
+Thumbs.db

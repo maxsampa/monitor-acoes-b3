@@ -1,0 +1,39 @@
+{
+    "$schema": "https://railway.app/railway.schema.json",
+    "build": {
+      "builder": "NIXPACKS",
+      "nixpacksPlan": {
+        "providers": ["python"],
+        "install": "pip install -r requirements.txt",
+        "start": "python monitor.py"
+      }
+    },
+    "deploy": {
+      "startCommand": "python monitor.py",
+      "restartPolicyType": "ON_FAILURE",
+      "restartPolicyMaxRetries": 10
+    },
+    "volume": [
+      {
+        "mountPath": "/app",
+        "name": "data"
+      }
+    ],
+    "env": {
+      "BRAPI_API_KEY": {
+        "required": true
+      },
+      "TELEGRAM_TOKEN": {
+        "required": true
+      },
+      "TELEGRAM_CHAT_ID": {
+        "required": true
+      },
+      "PERPLEXITY_API_KEY": {
+        "required": true
+      },
+      "SEGURANCA_SENHA": {
+        "required": true
+      }
+    }
+  }
