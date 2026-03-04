@@ -138,6 +138,20 @@ _ULTIMO_UPDATE_ID: int = 0
 # ============================================================
 _CACHE_SONAR: dict = {}
 
+# ============================================================
+# CONTROLE DE ALERTAS — limita ruído de notificações
+# ============================================================
+
+# Contador de alertas de queda simples por dia, por ticker.
+# Estrutura: { "PETR4": {"data": "2026-03-04", "count": 2} }
+# Reset automático quando a data muda (meia-noite BRT).
+_CONTAGEM_ALERTAS_QUEDA: dict = {}
+
+# Tickers com streak cumulativo já alertado no ciclo atual.
+# Entrada removida automaticamente quando o streak termina
+# (variação volta ao positivo), permitindo alertar o próximo streak.
+_STREAKS_ALERTADOS: set = set()
+
 
 # ============================================================
 # SEÇÃO 1 — WATCHLIST (v8.1: JSON + gerenciamento dinâmico)
@@ -3295,6 +3309,15 @@ def monitorar_watchlist(intervalo_minutos: int = 15):
                 # ── Alerta de queda detectado ─────────────────
                 if variacao <= LIMIAR_QUEDA_PCT:
 
+                    # 0. Limite diário: no máximo 2 alertas por ticker por dia
+                    hoje_str  = _agora_brt().strftime("%Y-%m-%d")
+                    reg_a     = _CONTAGEM_ALERTAS_QUEDA.get(ticker, {"data": "", "count": 0})
+                    if reg_a["data"] != hoje_str:
+                        reg_a = {"data": hoje_str, "count": 0}
+                    if reg_a["count"] >= 2:
+                        print(f"  [{ticker}] Limite de 2 alertas/dia atingido. Ignorando.")
+                        continue
+
                     # 1. Busca fundamentalistas (FCF, ROE, DY, VolMed)
                     fund = buscar_fundamentalistas(ticker)
 
@@ -3341,6 +3364,10 @@ def monitorar_watchlist(intervalo_minutos: int = 15):
                         motivo        = motivo,
                     )
 
+                    # Incrementa contador diário de alertas para este ticker
+                    reg_a["count"] += 1
+                    _CONTAGEM_ALERTAS_QUEDA[ticker] = reg_a
+
         # ── Deteccao de streak pos-ciclo (v8.2) ──────────────
         if STREAK_ATIVO and cotacoes:
             historico_atual = _carregar_historico()
@@ -3351,6 +3378,13 @@ def monitorar_watchlist(intervalo_minutos: int = 15):
                 vol  = ativo_s.get("volume") or 0
                 ativou, soma, n_dias = _calcular_streak(tk, historico_atual)
                 if not ativou:
+                    # Streak terminou: remove flag para alertar no próximo streak
+                    if tk in _STREAKS_ALERTADOS:
+                        print(f"  [Streak] {tk}: streak encerrado. Flag removida.")
+                        _STREAKS_ALERTADOS.discard(tk)
+                    continue
+                if tk in _STREAKS_ALERTADOS:
+                    print(f"  [Streak] {tk}: streak já alertado. Aguardando reset.")
                     continue
                 fund_s = buscar_fundamentalistas(tk)
                 passa_s, filtro_s = verificar_filtro_qualidade(
@@ -3379,6 +3413,8 @@ def monitorar_watchlist(intervalo_minutos: int = 15):
                     score_labels  = slabels_s,
                     filtro_labels = filtro_s,
                 )
+                # Marca este streak como já alertado
+                _STREAKS_ALERTADOS.add(tk)
 
         # ── Aguarda proximo ciclo (polling a cada 5s) ─────────
         prox      = _agora_brt() + timedelta(minutes=intervalo_minutos)
